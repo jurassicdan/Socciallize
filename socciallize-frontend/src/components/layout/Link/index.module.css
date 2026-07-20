@@ -1,0 +1,29 @@
+.link {
+  font-size: 1.2rem;
+  margin: 1rem;
+
+  &:hover {
+    font-size: 1.4rem;
+    color: var(--fg-btn-color);
+  }
+
+  &:active {
+    font-size: 1.1rem;
+    color: var(--border-color);
+  }
+}
+
+.border-link {
+  border: 2px solid var(--bg-btn-color);
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  font-weight: bold;
+  transition: 0.25s;
+}
+
+.no-border-link {
+  text-decoration: none;
+  font-weight: bold;
+  transition: 0.25s;
+}

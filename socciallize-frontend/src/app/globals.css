@@ -1,0 +1,104 @@
+:root {
+  --bg-color: #0d1321ff;
+  --hover-color: #1d2d44ff;
+  --bg-btn-color: #3e5c76ff;
+  --fg-btn-color: #748cabff;
+  --fg-color: #f0ebd8ff;
+  --border-color: #edadc7ff;
+  --sec-bg-color: #d199b6ff;
+  --sec-fg-color: #c493b0ff;
+  --sec-hover-color: #a68ba5ff;
+  --sec-bg-btn-color: #5c5d67ff;
+}
+
+nav {
+  view-transition-name: main-navbar;
+}
+
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  animation-name: fade-out;
+}
+
+::view-transition-new(root) {
+  animation-name: fade-in;
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--fg-color);
+}
+
+a {
+  color: var(--fg-color);
+}
+
+button {
+  color: var(--fg-color);
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.75rem;
+}
+
+h3 {
+  font-size: 1.5rem;
+}
+
+h4 {
+  font-size: 1.25rem;
+}
+
+h5 {
+  font-size: 1rem;
+}
+
+h6 {
+  font-size: 0.75rem;
+}
+html {
+  scroll-behavior: smooth;
+}

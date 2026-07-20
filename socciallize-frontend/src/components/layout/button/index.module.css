@@ -1,0 +1,20 @@
+.Button {
+  padding: 0.5rem 2rem;
+  border-radius: 2rem;
+  border: 1px solid var(--border-color);
+  background-color: transparent;
+  font-weight: bold;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: 0.25s;
+  user-select: none;
+
+  &:hover {
+    font-size: 1.5rem;
+  }
+
+  &:active {
+    font-size: 1rem;
+    color: var(--hover-color);
+  }
+}
