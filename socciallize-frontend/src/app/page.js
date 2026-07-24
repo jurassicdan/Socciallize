@@ -1,10 +1,17 @@
+"use client";
+
 import GuestHome from "@/components/pages/home/guest";
-import UserHome from "@/components/pages/home/user";
+import UserHome from "../components/pages/home/user";
+import useAuth from "@/helpers/isAuth";
 
 export default function Home() {
-  const logged = false;
+  const { user, loading } = useAuth(false);
 
-  if (logged) {
+  if (loading) {
+    return <p>Carregando...</p>;
+  }
+
+  if (user) {
     return <UserHome />;
   }
 

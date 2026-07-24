@@ -5,38 +5,44 @@ import style from "./index.module.css";
 import CstmButton from "@/components/layout/button";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import useAuth from "@/helpers/isAuth";
 
 export default function Code_Verify() {
+  const { loading } = useAuth({ redirectIfAuth: true });
   const [InputCode, setInputCode] = useState("");
-  const SearchParams = useSearchParams();
-  const token = SearchParams.get("token");
-  const email = SearchParams.get("email");
+  const [email, setEmail] = useState("");
+
   const router = useRouter();
 
   useEffect(() => {
-    if (!token || !email) {
+    const Storageemail = sessionStorage.getItem("email");
+    if (!Storageemail) {
       router.push("/email-send");
+    } else {
+      setEmail(Storageemail);
     }
-  }, [token, email, router]);
+  }, [router]);
 
-  if (!token || !email) {
+  if (!email) {
+    return null;
+  }
+  if (loading) {
     return null;
   }
 
   const SendCodeToApi = async function (e) {
     e.preventDefault();
 
-    console.log(`Enviando -> ${InputCode} - ${token}`);
-
     try {
       const resp = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/register/email-verify`,
-        { UserCode: InputCode, token: token },
+        { UserCode: InputCode, email: email },
       );
 
-      if (resp) {
-        router.push(`create-account?email=${email}`);
+      if (resp.data.success) {
+        sessionStorage.setItem("token", resp.data.token);
+        router.push(`create-account`);
       } else {
         console.log("Erro ao verificar código");
       }
@@ -55,6 +61,7 @@ export default function Code_Verify() {
         autoComplete="off"
         id="InputCode"
         name="InputCode"
+        autoFocus="true"
         value={InputCode}
         onChange={(e) => setInputCode(e.target.value)}
         maxLength={7}

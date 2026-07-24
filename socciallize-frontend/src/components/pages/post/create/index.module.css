@@ -1,0 +1,47 @@
+.main_Container {
+  display: flex;
+  max-width: 100dvw;
+  min-height: 75dvh;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 2px solid var(--bg-btn-color);
+  margin: 2rem 0;
+  border-radius: 2rem;
+
+  & textarea {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    border: 1px solid var(--border-color);
+    resize: none;
+    color: var(--fg-color);
+    width: 90%;
+    height: 50dvh;
+    font-size: 1.25rem;
+    padding: 1rem 1rem;
+    border-radius: 2rem;
+    text-align: justify;
+  }
+
+  & p {
+    margin-bottom: 2rem;
+    font-weight: 700;
+    text-decoration: underline;
+  }
+
+  & input {
+    margin: 2rem;
+    font-size: 1.5rem;
+    font-weight: 400;
+  }
+
+  & small {
+    margin-top: 6rem;
+    font-size: 0.8rem;
+  }
+
+  & button {
+    margin: 0.5rem 0;
+  }
+}

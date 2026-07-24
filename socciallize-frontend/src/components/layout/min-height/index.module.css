@@ -1,5 +1,5 @@
 .min-height {
-  min-width: 100dvw;
+  max-width: 100dvw;
   min-height: 75dvh;
   padding: 0 15rem;
 }

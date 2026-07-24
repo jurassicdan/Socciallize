@@ -5,22 +5,28 @@ import axios from "axios";
 import style from "./index.module.css";
 import { useEffect, useState } from "react";
 import PostCard from "@/components/layout/postCard";
+import { useSearchParams } from "next/navigation";
 
-export default function UserHome() {
+export default function Profile() {
+  const searchParams = useSearchParams();
+  const username = searchParams.get("username");
   const [posts, setPosts] = useState([]);
   const [loadPost, setLoadPost] = useState(true);
   const { user, loading } = useAuth({ requireAuth: true });
 
   useEffect(() => {
+    if (!username) return;
+
     async function fetchPosts() {
+      setLoadPost(true);
       try {
         const resp = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/post`,
+          `${process.env.NEXT_PUBLIC_API_URL}/profile/${username}`,
           { withCredentials: true },
         );
 
-        if (resp.data?.success) {
-          setPosts(resp.data.posts || []);
+        if (resp.data.success) {
+          setPosts(resp.data.userPosts || []);
         }
       } catch (err) {
         console.log("Erro ao carregar posts");
@@ -28,10 +34,15 @@ export default function UserHome() {
         setLoadPost(false);
       }
     }
-    fetchPosts();
-  }, []);
 
-  if (loading || loadPost) {
+    fetchPosts();
+  }, [username]);
+
+  if (loadPost) {
+    return <p>Carregando...</p>;
+  }
+
+  if (loading) {
     return <p>Carregando...</p>;
   }
 

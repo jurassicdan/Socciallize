@@ -6,10 +6,16 @@ import CstmButton from "@/components/layout/button";
 import { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import useAuth from "@/helpers/isAuth";
 
 export default function Email_Send() {
+  const { loading } = useAuth({ redirectIfAuth: true });
   const [email, setEmail] = useState("");
   const router = useRouter();
+
+  if (loading) {
+    return null;
+  }
 
   const SendEmailToApi = async function (e) {
     e.preventDefault();
@@ -20,10 +26,9 @@ export default function Email_Send() {
         { email },
       );
 
-      const token = resp.data.token;
-
       if (resp) {
-        router.push(`email-verify?email=${email}&token=${token}`);
+        sessionStorage.setItem("email", email);
+        router.push(`email-verify`);
       }
     } catch (err) {
       console.log("Erro ao se conectar com o servidor: ", err);

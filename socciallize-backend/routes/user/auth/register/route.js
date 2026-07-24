@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import nodemailer from "nodemailer";
 import JWT from "jsonwebtoken";
 import "dotenv/config";
+import { Prisma } from "@prisma/client";
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -27,14 +28,25 @@ router.post("/email-send", async (req, res) => {
         erro: "E-mail já registrado!",
       });
     }
-  } catch (err) {
-    console.log("Erro ao verificar banco de dados: ", err);
-  }
 
-  const VerifyCode = String(Math.floor(1000000 + Math.random() * 9000000));
-  const VerifyCodeHash = await bcrypt.hash(VerifyCode, 16);
+    const VerifyCode = String(Math.floor(1000000 + Math.random() * 9000000));
+    const VerifyCodeHash = await bcrypt.hash(VerifyCode, 10);
 
-  try {
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await prisma.verifyCode.upsert({
+      where: { email: email },
+      update: {
+        Code: VerifyCodeHash,
+        expiresAt: expiresAt,
+      },
+      create: {
+        email: email,
+        Code: VerifyCodeHash,
+        expiresAt: expiresAt,
+      },
+    });
+
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 465,
@@ -44,13 +56,12 @@ router.post("/email-send", async (req, res) => {
         pass: process.env.EMAIL_PASS,
       },
     });
-    try {
-      const info = await transporter.sendMail({
-        from: "Socciallize <Sociallite.app2026@gmail.com>",
-        to: email,
-        subject: "Boas-vindas ao Socciallize!",
-        text: "Obrigado por participar de nosso site! Para continuar a criação da sua conta, você terá que colocar esses 7 números abaixo na tela do seu navegador!",
-        html: `
+    const info = await transporter.sendMail({
+      from: "Socciallize <Sociallite.app2026@gmail.com>",
+      to: email,
+      subject: "Boas-vindas ao Socciallize!",
+      text: "Obrigado por participar de nosso site! Para continuar a criação da sua conta, você terá que colocar esses 7 números abaixo na tela do seu navegador!",
+      html: `
         <h2 style="font-size: 2rem; width: 100%">Boas-vindas ao Socciallize!</h2>
         
         <h4 style="font-size: 1.50rem">Obrigado por nos escolher!</h4>
@@ -60,78 +71,118 @@ router.post("/email-send", async (req, res) => {
 
         <p style="font-size: 1.15rem; text-decoration: underline"><strong>${VerifyCode}</strong></p>
         `,
-      });
-    } catch (err) {
-      console.log("Erro ao tentar enviar e-mail: ", err);
-    }
+    });
+
+    return res.status(200).json({
+      message: "Código enviado no email!",
+    });
   } catch (err) {
-    console.log("Erro ao tentar enviar e-mail: ", err);
+    console.log("Erro ao verificar banco de dados: ", err);
+
+    return res.status(500).json({
+      erro: "Erro interno ao tentar enviar o email.",
+    });
   }
-
-  const Token = JWT.sign({ code: VerifyCodeHash }, JWT_SECRET, {
-    expiresIn: "5m",
-  });
-
-  res.cookie("token", Token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 5 * 60 * 1000,
-  });
-
-  return res.status(200).json({
-    message: "Código enviado no email!",
-    token: Token,
-  });
 });
 
-router.post("/email-verify", (req, res) => {
-  const { UserCode, token } = req.body;
-
-  if (!UserCode || !token) {
+router.post("/email-verify", async (req, res) => {
+  const { UserCode, email } = req.body;
+  if (!UserCode || !email) {
     return res.status(400).json({
-      erro: "Valores inexistentes.",
+      erro: "Código ou e-mail faltando!",
     });
   }
+
+  let Verification;
 
   try {
-    const decoded = JWT.verify(token, JWT_SECRET);
-
-    const isMatch = bcrypt.compare(String(UserCode), String(decoded.code));
-
-    if (isMatch) {
-      return res.status(200).json({
-        message: "E-mail verificado com sucesso!",
-      });
-    } else {
-      return res.status(400).json({
-        erro: "O código precisa ser o mesmo do código enviado pelo e-mail.",
-      });
-    }
+    Verification = await prisma.verifyCode.findUnique({
+      where: { email: email },
+    });
   } catch (err) {
-    console.log("Erro ao verificar os códigos: ", err);
-    return res.status(400).json({
-      erro: "Código inválido ou expirado. Solicite um novo código.",
+    console.log("Erro ao tentar acessar banco de dados: ", err);
+    return res.status(500).json({
+      erro: "Erro interno no servidor ao verificar e-mail.",
     });
   }
+
+  if (!Verification) {
+    return res.status(400).json({
+      erro: "Nenhum código válido para este e-mail.",
+    });
+  }
+
+  if (Verification.expiresAt < new Date()) {
+    await prisma.verifyCode.delete({ where: { email } });
+    return res.status(400).json({
+      erro: "O código expirou. solicite um novo",
+    });
+  }
+
+  const isMatch = await bcrypt.compare(UserCode, Verification.Code);
+
+  if (!isMatch) {
+    return res.status(400).json({
+      erro: "O código precisa ser o mesmo código enviado pelo seu e-mail!",
+    });
+  }
+
+  const token = JWT.sign({ email: email, verified: true }, JWT_SECRET, {
+    expiresIn: "10m",
+  });
+
+  return res.status(201).json({
+    message: "E-mail verificado com sucesso!",
+    success: true,
+    token: token,
+  });
 });
 
 router.post("/final", async (req, res) => {
-  const { email, age, name, username, password, confirmpassword } = req.body;
+  const { name, username, password, confirmpassword, token } = req.body;
+  if (!token) {
+    return res.status(400).json({
+      erro: "O token não foi fornecido corretamente.",
+    });
+  }
 
+  let decoded;
+
+  try {
+    decoded = JWT.verify(token, JWT_SECRET);
+  } catch (err) {
+    return res.status(400).json({
+      erro: "Token inválido ou expirado.",
+    });
+  }
+
+  if (!decoded.verified || !decoded.email) {
+    return res.status(400).json({
+      erro: "O token não foi fornecido corretamente.",
+    });
+  }
+
+  let VerifiedEmail;
+
+  try {
+    VerifiedEmail = await prisma.verifyCode.findUnique({
+      where: { email: decoded.email },
+    });
+  } catch (err) {
+    console.log("Erro ao verificar e-mail: ", err);
+    return res.status(500).json({
+      erro: "Erro interno ao verificar e-mail.",
+    });
+  }
+
+  if (!VerifiedEmail) {
+    return res.status(400).json({
+      erro: "O e-mail não foi verificado.",
+    });
+  }
+
+  const email = decoded.email;
   const usernameRegex = /^[a-z0-9._-]+$/;
-
-  if (!age || typeof age !== "number") {
-    return res.status(400).json({
-      erro: "Coloque uma idade válida",
-    });
-  }
-
-  if (age <= 10) {
-    return res.status(400).json({
-      erro: "ops, parece que você não tem a idade mínima para estar aqui!",
-    });
-  }
 
   if (!name || typeof name !== "string" || name.trim() === "") {
     return res.status(400).json({
@@ -191,27 +242,62 @@ router.post("/final", async (req, res) => {
     }
   } catch (err) {
     console.log(err);
+
+    return res.status(500).json({
+      erro: "Erro ao verificar se usuário já existe.",
+    });
   }
 
   try {
-    const Salt = await bcrypt.genSalt(16);
+    const Salt = await bcrypt.genSalt(10);
     const HashPassword = await bcrypt.hash(password, Salt);
     const resp = await prisma.user.create({
       data: {
         name: name,
         email: email,
-        age: age,
         password: HashPassword,
         username: username,
       },
     });
+
+    await prisma.verifyCode.delete({
+      where: { email: email },
+    });
+
+    const authToken = JWT.sign(
+      {
+        id: resp.id,
+        email: resp.email,
+        username: resp.username,
+      },
+      JWT_SECRET,
+      { expiresIn: "1y" },
+    );
+
+    res.cookie("socciallize_token", authToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Usuário criado com sucesso!",
+      user: {
+        id: resp.id,
+        name: resp.name,
+        username: resp.username,
+        email: resp.email,
+      },
+    });
   } catch (err) {
     console.log(err);
+    return res.status(500).json({
+      erro: "Erro interno ao criar usuário. Tente novamente.",
+    });
   }
-
-  res.status(201).json({
-    message: "Usuário criado com sucesso!",
-  });
 });
 
 export default router;

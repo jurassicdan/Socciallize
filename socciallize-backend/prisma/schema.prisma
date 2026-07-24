@@ -14,10 +14,29 @@ datasource db {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  age       Int
   name      String
   username  String   @unique
   password  String
   admin     Boolean  @default(false)
   createdAt DateTime @default(now())
+  posts Post[]
+}
+
+model VerifyCode {
+  id        String  @id @default(uuid())
+  email     String  @unique
+  Code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Post {
+  id        String @id @default(uuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  likes     Int   @default(0)
+  comments  Int   @default(0)
+  authorId String
+  author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }
